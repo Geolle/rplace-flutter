@@ -73,7 +73,6 @@ class _CanvasWidgetState extends State<CanvasWidget> {
                     Offset localPosition =
                         renderBox.globalToLocal(details.globalPosition);
 
-                    // 考虑滚动偏移量的调整
                     double offsetX = _hScrollController.offset;
                     double offsetY = _vScrollController.offset;
 
@@ -84,9 +83,11 @@ class _CanvasWidgetState extends State<CanvasWidget> {
 
                     updatePixel(x, y, widget.selectedColor);
                   },
-                  child: CustomPaint(
-                    size: Size(gridWidth * pixelSize, gridHeight * pixelSize),
-                    painter: CanvasPainter(pixels, pixelSize, updatedPixels),
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      size: Size(gridWidth * pixelSize, gridHeight * pixelSize),
+                      painter: CanvasPainter(pixels, pixelSize, updatedPixels),
+                    ),
                   ),
                 ),
               ),
@@ -131,6 +132,7 @@ class CanvasPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
 
+    // 仅绘制已更新的像素
     for (var point in updatedPixels) {
       int x = point.x.toInt();
       int y = point.y.toInt();
@@ -144,48 +146,30 @@ class CanvasPainter extends CustomPainter {
     var normalColor = Colors.grey.withOpacity(0.5);
     var splitColor = Colors.black.withOpacity(0.5);
     paint.color = normalColor;
-    for (int i = 0; i <= pixels.length; i++) {
-      if (i % 1000 == 0) {
-        paint.strokeWidth = 2;
-        paint.color = splitColor;
-        canvas.drawLine(
-          Offset(0, i * pixelSize),
-          Offset(size.width, i * pixelSize),
-          paint,
-        );
-      } else {
-        paint.strokeWidth = 1;
-        paint.color = normalColor;
-        // canvas.drawLine(
-        //   Offset(1, i * pixelSize),
-        //   Offset(size.width, i * pixelSize),
-        //   paint,
-        // );
-      }
+
+    // 仅绘制需要的网格线
+    for (int i = 0; i <= pixels.length; i += 100) {
+      paint.strokeWidth = i % 1000 == 0 ? 2 : 1;
+      paint.color = i % 1000 == 0 ? splitColor : normalColor;
+      canvas.drawLine(
+        Offset(0, i * pixelSize),
+        Offset(size.width, i * pixelSize),
+        paint,
+      );
     }
-    for (int j = 0; j <= pixels[0].length; j++) {
-      if (j % 1000 == 0) {
-        paint.strokeWidth = 2;
-        paint.color = splitColor;
-        canvas.drawLine(
-          Offset(j * pixelSize, 0),
-          Offset(j * pixelSize, size.height),
-          paint,
-        );
-      } else {
-        paint.strokeWidth = 1;
-        paint.color = normalColor;
-        // canvas.drawLine(
-        //   Offset(j * pixelSize, 0),
-        //   Offset(j * pixelSize, size.height),
-        //   paint,
-        // );
-      }
+    for (int j = 0; j <= pixels[0].length; j += 100) {
+      paint.strokeWidth = j % 1000 == 0 ? 2 : 1;
+      paint.color = j % 1000 == 0 ? splitColor : normalColor;
+      canvas.drawLine(
+        Offset(j * pixelSize, 0),
+        Offset(j * pixelSize, size.height),
+        paint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
+  bool shouldRepaint(CanvasPainter oldDelegate) {
+    return updatedPixels.isNotEmpty;
   }
 }
